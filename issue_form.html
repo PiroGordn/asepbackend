@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue Tracker</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(to right, #7bbe83, #68c3da);
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        h2 {
+            font-size: 2rem;
+            color: #fff;
+            margin-bottom: 30px;
+        }
+        .card {
+            margin: 20px 0;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease-in-out;
+            background-color: #ffffff;
+        }
+        .card:hover {
+            transform: scale(1.02);
+        }
+        .solved {
+            background-color: #d4edda;
+            border-left: 5px solid #28a745;
+        }
+        .btn-success, .btn-primary {
+            border-radius: 50px;
+            padding: 10px 20px;
+        }
+        .form-group textarea, .form-group input {
+            border-radius: 10px;
+        }
+        @media (max-width: 576px) {
+            h2 {
+                font-size: 1.5rem;
+            }
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center">Issue Tracker</h2>
+        
+        <form id="issue-form">
+            <div class="form-group">
+                <label for="issue-text">Describe the Issue:</label>
+                <textarea class="form-control" id="issue-text" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="name">Your Name:</label>
+                <input type="text" class="form-control" id="name" required>
+            </div>
+            <div class="form-group">
+                <label for="address">Your Address:</label>
+                <input type="text" class="form-control" id="address" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Issue</button>
+        </form>
+
+        <h3 class="mt-4">Raised Issues</h3>
+        <div id="issue-list"></div>
+
+        <h3 class="mt-4">Similar Issues on Twitter</h3>
+        <div id="twitter-results" class="twitter-section"></div>
+    </div>
+
+    <script>
+        function loadIssues() {
+            $.getJSON('get_issues.php', function(data) {
+                $("#issue-list").html("");
+                data.forEach(issue => {
+                    let card = `<div class="card p-3 ${issue.solved ? 'solved' : ''}">
+                        <h5>${issue.issue_text}</h5>
+                        <p><strong>By:</strong> ${issue.name}, ${issue.address}</p>
+                        ${issue.solved ? '<span class="badge badge-success">Solved</span>' : `<button class="btn btn-success mark-solved" data-id="${issue.id}">Mark as Solved</button>`}
+                    </div>`;
+                    $("#issue-list").append(card);
+                });
+            });
+        }
+
+        function fetchTweets(issue) {
+            $.getJSON('get_twitter_issues.php?query=' + encodeURIComponent(issue), function(data) {
+                $("#twitter-results").html("");
+                if (data.length === 0) {
+                    $("#twitter-results").append("<p>No relevant tweets found.</p>");
+                } else {
+                    data.forEach(tweet => {
+                        $("#twitter-results").append(`<p>${tweet}</p>`);
+                    });
+                }
+            });
+        }
+
+        $("#issue-form").submit(function(event) {
+            event.preventDefault();
+            $.post('submit_issue.php', {
+                issue_text: $("#issue-text").val(),
+                name: $("#name").val(),
+                address: $("#address").val()
+            }, function(response) {
+                alert(response.message);
+                loadIssues();
+                fetchTweets($("#issue-text").val());
+                $("#issue-text, #name, #address").val('');
+            }, 'json');
+        });
+
+        $(document).on("click", ".mark-solved", function() {
+            let issueId = $(this).data("id");
+            $.post('mark_solved.php', { id: issueId }, function(response) {
+                alert(response.message);
+                loadIssues();
+            }, 'json');
+        });
+
+        loadIssues();
+    </script>
+</body>
+</html>
